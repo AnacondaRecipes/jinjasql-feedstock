@@ -11,6 +11,8 @@ source:
 
 build:
   number: 0
+  # conda.exceptions.UnsatisfiableError for python 3.11
+  skip: true  # [py>310]
   script: {{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv
 
 requirements:
