@@ -8,14 +8,17 @@ package:
 source:
   url: https://github.com/sripathikrishnan/{{ name }}/archive/refs/tags/v{{ version }}.tar.gz
   sha256: 91d2362311443bcff6d91fc948e932d346f4ab738006c64adb1e4d4323f679b6
+  patches:
+    - fix_jinja2.patch
 
 build:
   number: 0
-  # conda.exceptions.UnsatisfiableError for python 3.11
-  skip: true  # [py>310]
   script: {{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv
 
 requirements:
+  build:
+    - m2-patch  # [win]
+    - patch     # [not win]
   host:
     - python
     - pip
@@ -23,8 +26,7 @@ requirements:
     - wheel
   run:
     - python
-    # Use the upper bound <3.0.0 because otherwise tests will fail
-    - jinja2 >=2.5,<3.0.0
+    - jinja2 >=2.8
 
 test:
   imports:
@@ -42,7 +44,7 @@ test:
     - python run_tests
 
 about:
-  home: https://github.com/hashedin/jinjasql
+  home: https://github.com/sripathikrishnan/jinjasql
   license: MIT
   license_family: MIT
   license_file: LICENSE
@@ -51,8 +53,8 @@ about:
     JinjaSQL is a template language for SQL statements and scripts. Since it's
     based in Jinja2, you have all the power it offers - conditional statements,
     macros, looping constructs, blocks, inheritance, and many more.
-  dev_url: https://github.com/hashedin/jinjasql
-  doc_url: https://github.com/hashedin/jinjasql
+  dev_url: https://github.com/sripathikrishnan/jinjasql
+  doc_url: https://github.com/sripathikrishnan/jinjasql
 
 extra:
   recipe-maintainers:

@@ -1,0 +1,133 @@
+From 0108a3a258851b678d337dbd2cddfc75db5350c2 Mon Sep 17 00:00:00 2001
+From: Serhii Kupriienko
+Date: Thu, 12 Oct 2023 14:11:22 +0300
+Subject: [PATCH] Fix jinja2
+
+---
+ jinjasql/core.py | 27 +++++++++++++--------------
+ requirements.txt |  2 +-
+ setup.py         |  2 +-
+ 3 files changed, 15 insertions(+), 16 deletions(-)
+
+diff --git a/jinjasql/core.py b/jinjasql/core.py
+index f7ecec1..d2214ed 100644
+--- a/jinjasql/core.py
++++ b/jinjasql/core.py
+@@ -3,7 +3,7 @@ from jinja2 import Environment
+ from jinja2 import Template
+ from jinja2.ext import Extension
+ from jinja2.lexer import Token
+-from jinja2.utils import Markup
++from markupsafe import Markup
+ 
+ try:
+     from collections import OrderedDict
+@@ -48,18 +48,18 @@ class SqlExtension(Extension):
+ 
+     def filter_stream(self, stream):
+         """
+-        We convert 
++        We convert
+         {{ some.variable | filter1 | filter 2}}
+-            to 
++            to
+         {{ ( some.variable | filter1 | filter 2 ) | bind}}
+-        
++
+         ... for all variable declarations in the template
+ 
+         Note the extra ( and ). We want the | bind to apply to the entire value, not just the last value.
+         The parentheses are mostly redundant, except in expressions like {{ '%' ~ myval ~ '%' }}
+ 
+-        This function is called by jinja2 immediately 
+-        after the lexing stage, but before the parser is called. 
++        This function is called by jinja2 immediately
++        after the lexing stage, but before the parser is called.
+         """
+         while not stream.eos:
+             token = next(stream)
+@@ -73,10 +73,10 @@ class SqlExtension(Extension):
+                 last_token = var_expr[-1]
+                 lineno = last_token.lineno
+                 # don't bind twice
+-                if (not last_token.test("name") 
++                if (not last_token.test("name")
+                     or not last_token.value in ('bind', 'inclause', 'sqlsafe')):
+                     param_name = self.extract_param_name(var_expr)
+-                    
++
+                     var_expr.insert(1, Token(lineno, 'lparen', u'('))
+                     var_expr.append(Token(lineno, 'rparen', u')'))
+                     var_expr.append(Token(lineno, 'pipe', u'|'))
+@@ -97,10 +97,10 @@ def sql_safe(value):
+     return Markup(value)
+ 
+ def bind(value, name):
+-    """A filter that prints %s, and stores the value 
++    """A filter that prints %s, and stores the value
+     in an array, so that it can be bound using a prepared statement
+ 
+-    This filter is automatically applied to every {{variable}} 
++    This filter is automatically applied to every {{variable}}
+     during the lexing stage, so developers can't forget to bind
+     """
+     if isinstance(value, Markup):
+@@ -110,13 +110,13 @@ def bind(value, name):
+             Did you forget to apply '|inclause' to your query?""")
+     else:
+         return _bind_param(_thread_local.bind_params, name, value)
+-    
++
+ def bind_in_clause(value):
+     values = list(value)
+     results = []
+     for v in values:
+         results.append(_bind_param(_thread_local.bind_params, "inclause", v))
+-    
++
+     clause = ",".join(results)
+     clause = "(" + clause + ")"
+     return clause
+@@ -125,7 +125,7 @@ def _bind_param(already_bound, key, value):
+     _thread_local.param_index += 1
+     new_key = "%s_%s" % (key, _thread_local.param_index)
+     already_bound[new_key] = value
+-    
++
+     param_style = _thread_local.param_style
+     if param_style == 'qmark':
+         return "?"
+@@ -164,7 +164,6 @@ class JinjaSql(object):
+     def _prepare_environment(self):
+         self.env.autoescape=True
+         self.env.add_extension(SqlExtension)
+-        self.env.add_extension('jinja2.ext.autoescape')
+         self.env.filters["bind"] = bind
+         self.env.filters["sqlsafe"] = sql_safe
+         self.env.filters["inclause"] = bind_in_clause
+diff --git a/requirements.txt b/requirements.txt
+index 8d495d4..aa837e8 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -1,3 +1,3 @@
+-Jinja2>=2.5
++Jinja2>=2.8
+ Django>=1.7,<1.8
+ PyYAML>=3
+\ No newline at end of file
+diff --git a/setup.py b/setup.py
+index a02f39c..93acda6 100644
+--- a/setup.py
++++ b/setup.py
+@@ -39,7 +39,7 @@ sdict = {
+     'packages' : ['jinjasql'],
+     'test_suite' : 'tests.all_tests',
+     'install_requires': [
+-        'Jinja2>=2.5'
++        'Jinja2>=2.8'
+     ],
+     'classifiers' : [
+         'Development Status :: 4 - Beta',
+-- 
+2.39.0
+
